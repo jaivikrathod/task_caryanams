@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD with AJAX</title>
+    <meta name="csrf-token" content="YOUR_CSRF_TOKEN_HERE">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>CRUD with AJAX</h2>
+
+    <form id="itemForm">
+        <input type="hidden" id="itemId">
+        <div class="form-group">
+            <label>car Name</label>
+            <input type="text" id="name" class="form-control" required>
+        </div>
+         <div class="form-group">
+            <label>Car Number</label>
+            <input type="text" id="number" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea id="description" class="form-control" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" id="saveBtn">Add Item</button>
+    </form>
+
+    <table class="table mt-4">
+        <thead>
+            <tr>
+                <th>car name</th>
+                <th>car number</th>
+                <th>car description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="itemTable">
+            
+        </tbody>
+    </table>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // CSRF Token setup for AJAX requests
+    $.get('http://127.0.0.1:8000/csrf-token', function(response) {
+        $('meta[name="csrf-token"]').attr('content', response.token);
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': response.token
+            }
+        });
+    });
+
+    // Fetch and display items
+    function fetchItems() {
+        $.get('http://127.0.0.1:8000/items', function(data) {
+            $('#itemTable').empty();
+            data.forEach(item => {
+                $('#itemTable').append(`
+                    <tr data-id="${item.id}">
+                        <td>${item.name}</td>
+                        <td>${item.number}</td>
+                        <td>${item.description}</td>
+                        <td>
+                            <button class="btn btn-info btn-edit">Edit</button>
+                            <button class="btn btn-danger btn-delete">Delete</button>
+                        </td>
+                    </tr>
+                `);
+            });
+        });
+    }
+
+    // Add or update item
+    $('#itemForm').on('submit', function(e) {
+        e.preventDefault();
+
+        let itemId = $('#itemId').val();
+        let url = itemId ? `http://127.0.0.1:8000/items/${itemId}` : 'http://127.0.0.1:8000/items';
+        let method = itemId ? 'PUT' : 'POST';
+
+        $.ajax({
+            url: url,
+            type: method,
+            data: {
+                name: $('#name').val(),
+                number: $('#number').val(),
+                description: $('#description').val()
+            },
+            success: function(data) {
+                $('#itemForm')[0].reset();
+                $('#itemId').val('');
+                $('#saveBtn').text('Add Item');
+                fetchItems();
+            }
+        });
+    });
+
+    // Edit item
+    $('#itemTable').on('click', '.btn-edit', function() {
+        let itemId = $(this).closest('tr').data('id');
+
+        $.get(`http://127.0.0.1:8000/items/${itemId}`, function(data) {
+            $('#itemId').val(data.id);
+            $('#name').val(data.name);
+            $('#number').val(data.number);
+            $('#description').val(data.description);
+            $('#saveBtn').text('Update Item');
+        });
+    });
+
+    // Delete item
+    $('#itemTable').on('click', '.btn-delete', function() {
+        let itemId = $(this).closest('tr').data('id');
+
+        $.ajax({
+            url: `http://127.0.0.1:8000/items/${itemId}`,
+            type: 'DELETE',
+            success: function() {
+                fetchItems();
+            }
+        });
+    });
+
+    fetchItems();
+});
+</script>
+</body>
+</html>
